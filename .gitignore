@@ -5,6 +5,8 @@ __pycache__/
 
 # C extensions
 *.so
+*.xls
+*.xlsx
 
 # Distribution / packaging
 .Python
@@ -128,6 +130,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
+
 .env
 .venv
 env/
