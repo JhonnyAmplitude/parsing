@@ -5,7 +5,7 @@ from typing import Any, List, Optional, Tuple
 import xlrd
 
 from OperationDTO import OperationDTO
-from constatns import CURRENCY_DICT, TRADE_TYPE_CONFIG
+from constants import CURRENCY_DICT, TRADE_TYPE_CONFIG
 from utils import extract_rows, normalize_str, parse_date
 
 

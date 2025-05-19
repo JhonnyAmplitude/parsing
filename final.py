@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
 from OperationDTO import OperationDTO
-from constatns import (
+from constants import (
     CURRENCY_DICT,
     OPERATION_TYPE_MAP,
     SKIP_OPERATIONS,
