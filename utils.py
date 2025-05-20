@@ -75,7 +75,6 @@ def parse_date(value: Any) -> Optional[str]:
 
     return None
 
-
 def normalize_str(value: Any) -> str:
     s = str(value).strip() if value is not None else ""
     return "" if s.lower() == "none" else s

@@ -58,8 +58,8 @@ def get_cell(row: List[Any], index: int) -> Any:
 
 
 def process_operation_row(
-    data: List[Any],              # = row[1:] из parse_financial_operations
-    col_idx: Dict[str, int],      # карта полей → индексы
+    data: List[Any],
+    col_idx: Dict[str, int],
     current_currency: str,
     ticker: str,
     operation_id: str
@@ -106,7 +106,7 @@ def process_operation_row(
         currency=currency,
         ticker=ticker,
         isin=isin_val,
-        price=0.0,          # в финансовых операциях цена/кол-во не нужны
+        price=0.0,
         quantity=0,
         aci=0.0,
         comment=comment,
