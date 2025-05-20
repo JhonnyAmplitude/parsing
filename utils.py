@@ -2,10 +2,28 @@ import os
 import xlrd
 import openpyxl
 
-from typing import Any, Generator, List, Optional
+from typing import Any, Generator, List, Optional, Dict
 
 from datetime import datetime
 
+
+HEADER_VARIATIONS_FIN_OPS: Dict[str, list] = {
+    "date":      ["дата"],
+    "operation": ["операция"],
+    "income":    ["сумма зачисления", "зачислено"],
+    "expense":   ["сумма списания",   "списано"],
+    "comment":   ["примечание",       "назначение", "описание"],
+}
+
+def build_col_index_map_from_row(header_row: List[Any], variations: Dict[str, list]) -> Dict[str, int]:
+    col_map: Dict[str, int] = {}
+    for idx, cell in enumerate(header_row):
+        text = str(cell or "").strip().lower()
+        for key, variants in variations.items():
+            if any(v in text for v in variants):
+                col_map[key] = idx
+                break
+    return col_map
 
 def extract_rows(file_path: str) -> Generator[List[Any], None, None]:
     """
@@ -61,6 +79,15 @@ def parse_date(value: Any) -> Optional[str]:
 def normalize_str(value: Any) -> str:
     s = str(value).strip() if value is not None else ""
     return "" if s.lower() == "none" else s
+
+
+def safe_float(value: Any) -> float:
+    if value is None:
+        return 0.0
+    try:
+        return float(str(value).replace(',', '.'))
+    except (ValueError, TypeError):
+        return 0.0
 
 def is_nonzero(value: Any) -> bool:
     """

@@ -42,7 +42,7 @@ SPECIAL_OPERATION_HANDLERS = {
     "НДФЛ": lambda i, e: "refund" if is_nonzero(i) else "withholding",
 }
 
-#  Индексы и флаги для каждого типа сделок
+
 TRADE_TYPE_CONFIG = {
     "stock": {
         "is_stock": True,
@@ -88,6 +88,46 @@ TRADE_TYPE_CONFIG = {
     }
 }
 
+HEADER_VARIATIONS_TRADES = {
+    "stock": {
+        "operation_id": ["номер"],
+        "buy_quantity": ["куплено", "количеств"],
+        "buy_payment": ["сумма платежа", "платеж"],
+        "sell_quantity": ["продано", "количеств"],
+        "sell_revenue": ["сумма выручки", "выручка"],
+        "price": ["цена"],
+        "currency": ["валют"],
+        "date": ["дата соверш"],
+        "time": ["время соверш"],
+        "comment": ["примеч", "коммент"]
+    },
+    "bond": {
+        "operation_id": ["Номер"],
+        "buy_quantity": ["куплено", "количеств"],
+        "buy_payment": ["сумма платежа", "платеж"],
+        "sell_quantity": ["продано", "количеств"],
+        "sell_revenue": ["сумма выручки", "выручка"],
+        "price": ["цена"],
+        "aci": ["нкд", "НКД Продажи"],
+        "currency": ["валют"],
+        "date": ["дата соверш"],
+        "time": ["время соверш"],
+        "comment": ["примеч", "коммент"]
+    },
+    "currency": {
+        "operation_id": ["номер"],
+        "buy_price": ["курс сделки (покупка)"],
+        "buy_quantity": ["объём в валюте лота (в ед. валюты)"],
+        "buy_payment": ["объём в сопряж. валюте (в ед. валюты)"],
+        "sell_price": ["курс сделки (продажа)"],
+        "sell_quantity": ["объём в валюте лота (в ед. валюты)"],
+        "sell_payment": ["объём в сопряж. валюте (в ед. валюты)"],
+        "date": ["дата соверш"],
+        "time": ["время соверш"],
+        "comment": ["примеч", "коммент"]
+    }
+}
+
 #  Нормализация валют
 CURRENCY_DICT = {
     "AED": "AED", "AMD": "AMD", "BYN": "BYN", "CHF": "CHF", "CNY": "CNY",
@@ -96,3 +136,8 @@ CURRENCY_DICT = {
     "SEK": "SEK", "TJS": "TJS", "TRY": "TRY", "USD": "USD", "UZS": "UZS",
     "XAG": "XAG", "XAU": "XAU", "ZAR": "ZAR"
 }
+
+
+
+
+

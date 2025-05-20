@@ -2,6 +2,7 @@ import json
 import re
 from datetime import datetime
 from typing import Any, Dict, Generator, List, Optional, Tuple
+import logging
 
 from OperationDTO import OperationDTO
 from constants import (
@@ -10,21 +11,23 @@ from constants import (
     SKIP_OPERATIONS,
     SPECIAL_OPERATION_HANDLERS,
     VALID_OPERATIONS,
-    is_nonzero,
 )
 from fin import parse_trades
-from utils import parse_date, extract_rows
+
+from utils import (
+    parse_date,
+    extract_rows,
+    build_col_index_map_from_row,
+    HEADER_VARIATIONS_FIN_OPS,
+    is_nonzero,
+)
+
+logger = logging.getLogger(__name__)
 
 
 def extract_isin(comment: str) -> Optional[str]:
     match = re.search(r'\b[A-Z]{2}[A-Z0-9]{10}\b', comment)
     return match.group(0) if match else ""
-
-
-def extract_note(row: List[Any]) -> str:
-    NOTE_COLUMNS = slice(14, 19)
-    return " ".join(str(cell).strip() for cell in row[NOTE_COLUMNS] if cell and str(cell).strip())
-
 
 def safe_float(value: Any) -> float:
     if value is None:
@@ -33,7 +36,6 @@ def safe_float(value: Any) -> float:
         return float(str(value).replace(',', '.'))
     except (ValueError, TypeError):
         return 0.0
-
 
 def detect_operation_type(op: str, income: str, expense: str) -> str:
     if not isinstance(op, str):
@@ -56,48 +58,57 @@ def get_cell(row: List[Any], index: int) -> Any:
 
 
 def process_operation_row(
-    row: List[Any],
-    currency: str,
-    stock_mode: bool,
+    data: List[Any],              # = row[1:] из parse_financial_operations
+    col_idx: Dict[str, int],      # карта полей → индексы
+    current_currency: str,
     ticker: str,
     operation_id: str
 ) -> Optional[OperationDTO]:
-    raw_date = get_cell(row, 1)
-    operation = str(get_cell(row, 2)).strip()
+    """
+    data        — список ячеек строки, начиная со второго столбца Excel
+    col_idx     — {'date': 0, 'operation': 1, 'income': 2, 'expense': 3, 'comment': 4, ...}
+    current_currency — валюта из заголовка (например, 'USD', 'RUB')
+    """
 
-    if operation not in VALID_OPERATIONS or operation in SKIP_OPERATIONS:
+    # 1) операция
+    op_raw = str(data[col_idx["operation"]]).strip()
+    if not op_raw or op_raw in SKIP_OPERATIONS:
+        return None
+    if op_raw not in VALID_OPERATIONS:
+        # можно логировать или собирать в unknown_operations
         return None
 
+    # 2) дата
+    raw_date = data[col_idx["date"]]
     date = parse_date(raw_date)
     if not date:
         return None
 
-    income = str(get_cell(row, 6)).strip()
-    expense = str(get_cell(row, 7)).strip()
-    payment_sum = income if is_nonzero(income) else expense
-    payment_sum = safe_float(payment_sum)
+    # 3) суммы
+    income  = str(data[col_idx["income"]]).strip()  if "income"  in col_idx else ""
+    expense = str(data[col_idx["expense"]]).strip() if "expense" in col_idx else ""
+    payment = income if is_nonzero(income) else expense
+    payment = safe_float(payment)
 
-    comment = extract_note(row)
-    operation_type = detect_operation_type(operation, income, expense)
-    currency_value = CURRENCY_DICT.get(currency or "", currency or "")
+    # 4) комментарий + ISIN
+    comment = str(data[col_idx["comment"]]).strip() if "comment" in col_idx else ""
+    isin_val = extract_isin(comment)
 
-    price = safe_float(get_cell(row, 8))
-    quantity = safe_float(get_cell(row, 9))
+    # 5) тип операции и валюта
+    op_type = detect_operation_type(op_raw, income, expense)
+    currency = CURRENCY_DICT.get(current_currency, current_currency)
 
-    aci = 0.0
-    # if not stock_mode:
-    #     aci = safe_float(get_cell(row, 6)) or safe_float(get_cell(row, 10))
-
+    # 6) собираем DTO
     return OperationDTO(
         date=date,
-        operation_type=operation_type,
-        payment_sum=payment_sum,
-        currency=currency_value,
+        operation_type=op_type,
+        payment_sum=payment,
+        currency=currency,
         ticker=ticker,
-        isin=extract_isin(comment),
-        price=price,
-        quantity=quantity,
-        aci=aci,
+        isin=isin_val,
+        price=0.0,          # в финансовых операциях цена/кол-во не нужны
+        quantity=0,
+        aci=0.0,
         comment=comment,
         operation_id=operation_id,
     )
@@ -125,42 +136,104 @@ def is_table_header(row_str: str) -> bool:
     return all(header in row_str for header in ["Дата", "Операция", "Сумма зачисления"])
 
 
+from utils import (
+    parse_date,
+    extract_rows,
+    build_col_index_map_from_row,
+    HEADER_VARIATIONS_FIN_OPS,
+    is_nonzero,
+)
+from constants import CURRENCY_DICT, VALID_OPERATIONS, SKIP_OPERATIONS
+from OperationDTO import OperationDTO
+
+from typing import Generator, List, Dict, Optional, Tuple, Any
+from OperationDTO import OperationDTO
+from constants import CURRENCY_DICT, VALID_OPERATIONS, SKIP_OPERATIONS
+from utils import (
+    parse_date,
+    build_col_index_map_from_row,
+    HEADER_VARIATIONS_FIN_OPS,
+    is_nonzero,
+    safe_float,
+)
+from final import parse_header_data, detect_operation_type, extract_isin
+
 def parse_financial_operations(
     rows: Generator[List[Any], None, None]
 ) -> Tuple[Dict[str, Optional[str]], List[OperationDTO]]:
-    header_data = {"account_id": None, "account_date_start": None, "date_start": None, "date_end": None}
-    operations = []
-    current_currency = None
-    parsing = False
-    stock_mode = False
-    ticker = ""
-    operation_id = ""
+    header_data: Dict[str, Optional[str]] = {
+        "account_id": None,
+        "account_date_start": None,
+        "date_start": None,
+        "date_end": None,
+        "unknown_operations": []
+    }
+    operations: List[OperationDTO] = []
+    current_currency: Optional[str] = None
+    parsing: bool = False
+    col_idx: Dict[str, int] = {}
 
     for row in rows:
-        row_str = " ".join(str(cell).strip() for cell in row[1:] if cell).strip()
-
-        if not row_str:
-            continue
-
+        logger.debug(f"row: {row}")
+        row_str = " ".join(str(c).strip() for c in row if c).strip()
         if row_str in CURRENCY_DICT:
-            current_currency = row_str
+            current_currency = CURRENCY_DICT[row_str]
             continue
 
-        if is_table_header(row_str):
+        # 2) Ищем строку-заголовок таблицы
+        if not parsing and all(k in row_str.lower() for k in ("дата", "операция", "сумма")):
+            # Отсекаем первый служебный столбец
+            header_cells = row[1:]
+            col_idx = build_col_index_map_from_row(header_cells, HEADER_VARIATIONS_FIN_OPS)
             parsing = True
             continue
 
+        # Собираем метаданные до начала таблицы
         if not parsing:
             parse_header_data(row_str, header_data)
             continue
 
-        operation = str(get_cell(row, 2)).strip()
-        if operation in SKIP_OPERATIONS or operation not in VALID_OPERATIONS:
+        # Ждём, пока не построится карта колонок
+        if not col_idx:
             continue
 
-        entry = process_operation_row(row, current_currency, stock_mode, ticker, operation_id)
-        if entry:
-            operations.append(entry)
+        # 3) Разбираем каждую строку таблицы
+        data: List[Any] = row[1:]  # смещаемся, чтобы индексы col_idx совпадали
+        op_raw = str(data[col_idx["operation"]]).strip()
+        if not op_raw or op_raw in SKIP_OPERATIONS:
+            continue
+        if op_raw not in VALID_OPERATIONS:
+            header_data["unknown_operations"].append(op_raw)
+            continue
+
+        # Дата
+        raw_date = data[col_idx["date"]]
+        date = parse_date(raw_date)
+        if not date:
+            continue
+
+        # Сумма
+        income  = str(data[col_idx["income"]]).strip()  if "income"  in col_idx else ""
+        expense = str(data[col_idx["expense"]]).strip() if "expense" in col_idx else ""
+        payment = safe_float(income if is_nonzero(income) else expense)
+
+        # Комментарий и ISIN
+        comment  = str(data[col_idx["comment"]]).strip() if "comment" in col_idx else ""
+        isin_val = extract_isin(comment)
+
+        # Тип операции и валюта
+        op_type  = detect_operation_type(op_raw, income, expense)
+        currency = current_currency or "RUB"
+
+        operations.append(OperationDTO(
+            date=date,
+            operation_type=op_type,
+            payment_sum=payment,
+            currency=currency,
+            isin=isin_val,
+            comment=comment,
+            operation_id="",
+        ))
 
     return header_data, operations
 

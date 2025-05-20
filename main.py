@@ -6,6 +6,7 @@ from typing import Dict, Any
 
 import xlrd
 import openpyxl
+
 from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
@@ -14,14 +15,12 @@ from final import parse_full_statement
 from OperationDTO import OperationDTO
 
 # === Настройка логгирования ===
-def setup_logging():
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-
-setup_logging()
-logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
 
 # === Настройки приложения ===
 app = FastAPI(
@@ -30,13 +29,12 @@ app = FastAPI(
     version="1.0.0"
 )
 
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Разрешаем доступ только с этого адреса
+    allow_origins=["*"],  # Разрешаем доступ с любых источников (можно ограничить)
     allow_credentials=True,
-    allow_methods=["*"],  # Разрешаем все HTTP методы
-    allow_headers=["*"],  # Разрешаем все заголовки
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 ALLOWED_EXTENSIONS = {"xls", "xlsx"}
@@ -44,25 +42,16 @@ ALLOWED_EXTENSIONS = {"xls", "xlsx"}
 def validate_file_extension(file: UploadFile) -> str:
     """Проверяет расширение файла и возвращает его, если оно допустимо."""
     extension = Path(file.filename).suffix.lower().lstrip(".")
-
     if not extension or extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
             detail=f"Поддерживаются только файлы: {', '.join(ALLOWED_EXTENSIONS)}"
         )
-
     return extension
 
-
-import tempfile
-import os
-
-
 async def save_upload_file_tmp(file: UploadFile):
-    # Используем стандартный временный каталог
-    temp_dir = tempfile.gettempdir()  # Получаем путь к системному временному каталогу
+    temp_dir = tempfile.gettempdir()
     temp_file_path = os.path.join(temp_dir, file.filename)
-
     try:
         with open(temp_file_path, "wb") as temp_file:
             temp_file.write(await file.read())
@@ -70,7 +59,6 @@ async def save_upload_file_tmp(file: UploadFile):
     except Exception as e:
         logger.error(f"Ошибка при сохранении файла: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка при сохранении файла: {e}")
-
 
 def serialize_operations(result: Dict[str, Any]) -> Dict[str, Any]:
     """Преобразует объекты OperationDTO в словари."""
@@ -81,7 +69,6 @@ def serialize_operations(result: Dict[str, Any]) -> Dict[str, Any]:
             for op in operations
         ]
     return result
-
 
 @app.post(
     "/parse-financial-operations",
@@ -101,7 +88,7 @@ async def parse_file(
         result = parse_full_statement(temp_path)
         return JSONResponse(content=serialize_operations(result))
     except Exception as e:
-        logger.error(f"Ошибка при парсинге файла: {e}")
+        logger.exception(f"Ошибка при парсинге файла: {e}")
         raise HTTPException(status_code=422, detail=f"Ошибка при парсинге файла: {e}")
     finally:
         try:
@@ -114,7 +101,6 @@ async def parse_file(
 async def health_check():
     """Проверка состояния сервиса."""
     return {"status": "ok"}
-
 
 if __name__ == "__main__":
     import uvicorn
