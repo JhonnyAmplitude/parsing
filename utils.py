@@ -81,13 +81,6 @@ def normalize_str(value: Any) -> str:
     return "" if s.lower() == "none" else s
 
 
-def safe_float(value: Any) -> float:
-    if value is None:
-        return 0.0
-    try:
-        return float(str(value).replace(',', '.'))
-    except (ValueError, TypeError):
-        return 0.0
 
 def is_nonzero(value: Any) -> bool:
     """

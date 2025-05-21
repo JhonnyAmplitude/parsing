@@ -42,93 +42,47 @@ SPECIAL_OPERATION_HANDLERS = {
     "НДФЛ": lambda i, e: "refund" if is_nonzero(i) else "withholding",
 }
 
-
-TRADE_TYPE_CONFIG = {
-    "stock": {
-        "is_stock": True,
-        "is_currency": False,
-        "indexes": {
-            "buy": {
-                "price": 4, "quantity": 3, "payment": 5,
-                "date": 11, "time": 12, "currency": 10, "comment": 17
-            },
-            "sale": {
-                "price": 7, "quantity": 6, "payment": 8,
-                "date": 11, "time": 12, "currency": 10, "comment": 17
-            }
-        }
-    },
-    "bond": {
-        "is_stock": False,
-        "is_currency": False,
-        "indexes": {
-            "buy": {
-                "price": 4, "quantity": 3, "payment": 5,
-                "date": 13, "time": None, "currency": 11, "comment": 18, "aci": 6
-            },
-            "sale": {
-                "price": 8, "quantity": 7, "payment": 9,
-                "date": 13, "time": None, "currency": 11, "comment": 18, "aci": 10
-            }
-        }
-    },
-    "currency": {
-        "is_stock": False,
-        "is_currency": True,
-        "indexes": {
-            "buy": {
-                "price": 3, "quantity": 4, "payment": 5,
-                "date": 9, "time": 10
-            },
-            "sale": {
-                "price": 6, "quantity": 7, "payment": 8,
-                "date": 9, "time": 10
-            }
-        }
-    }
-}
-
 HEADER_VARIATIONS_TRADES = {
     "stock": {
-        "operation_id": ["номер"],
+        "operation_id": ["номер", "Номер"],
         "buy_quantity": ["куплено", "количеств"],
         "buy_payment": ["сумма платежа", "платеж"],
         "sell_quantity": ["продано", "количеств"],
         "sell_revenue": ["сумма выручки", "выручка"],
         "price": ["цена"],
         "currency": ["валют"],
-        "date": ["дата соверш"],
+        "date": ["дата соверш", "совершена"],
         "time": ["время соверш"],
         "comment": ["примеч", "коммент"]
     },
     "bond": {
-        "operation_id": ["Номер"],
-        "buy_quantity": ["куплено", "количеств"],
-        "buy_payment": ["сумма платежа", "платеж"],
-        "sell_quantity": ["продано", "количеств"],
-        "sell_revenue": ["сумма выручки", "выручка"],
-        "price": ["цена"],
-        "aci": ["нкд", "НКД Продажи"],
-        "currency": ["валют"],
-        "date": ["дата соверш"],
+        "operation_id": ["номер", "Номер"],
+        "buy_quantity": ["куплено", "Куплено, шт"],
+        "buy_payment": ["сумма платежа", "Сумма платежа"],
+        "sell_quantity": ["продано", "Продано, шт"],
+        "sell_revenue": ["сумма выручки", "Сумма выручки"],
+        "price": ["цена", "Цена, %"],
+        "aci": ["нкд", "НКД Продажи", "НКД Покупки"],
+        "currency": ["Валюта"],
+        "date": ["дата соверш", "совершена"],
         "time": ["время соверш"],
         "comment": ["примеч", "коммент"]
     },
     "currency": {
-        "operation_id": ["номер"],
+        "operation_id": ["номер", "Номер"],
         "buy_price": ["курс сделки (покупка)"],
         "buy_quantity": ["объём в валюте лота (в ед. валюты)"],
         "buy_payment": ["объём в сопряж. валюте (в ед. валюты)"],
         "sell_price": ["курс сделки (продажа)"],
         "sell_quantity": ["объём в валюте лота (в ед. валюты)"],
         "sell_payment": ["объём в сопряж. валюте (в ед. валюты)"],
-        "date": ["дата соверш"],
-        "time": ["время соверш"],
-        "comment": ["примеч", "коммент"]
+        "date": ["Дата соверш."],
+        "time": ["Время соверш"],
+        "type": ["тип сделки"],
+        "comment": ["примеч", "коммент", "Место сделки"]
     }
 }
 
-#  Нормализация валют
 CURRENCY_DICT = {
     "AED": "AED", "AMD": "AMD", "BYN": "BYN", "CHF": "CHF", "CNY": "CNY",
     "EUR": "EUR", "GBP": "GBP", "HKD": "HKD", "JPY": "JPY", "KGS": "KGS",
@@ -136,8 +90,3 @@ CURRENCY_DICT = {
     "SEK": "SEK", "TJS": "TJS", "TRY": "TRY", "USD": "USD", "UZS": "UZS",
     "XAG": "XAG", "XAU": "XAU", "ZAR": "ZAR"
 }
-
-
-
-
-
